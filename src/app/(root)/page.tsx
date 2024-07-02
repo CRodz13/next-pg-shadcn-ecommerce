@@ -1,6 +1,4 @@
 import ProductList from "@/components/shared/product/product-list";
-import { Button } from "@/components/ui/button";
-import Image from "next/image";
 import sampleData from '@/lib/sample-data'
 
 
