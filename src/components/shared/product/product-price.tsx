@@ -11,7 +11,6 @@ const ProductPrice = ({
     const [intValue, floatValue] = stringValue.includes('.')
         ? stringValue.split('.')
         : [stringValue, '']
-        console.log(intValue)
     return (
         <p className={cn('text-2xl', className)}>
             <span className="text-xs align-super">$</span>
