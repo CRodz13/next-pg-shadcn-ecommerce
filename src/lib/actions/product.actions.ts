@@ -2,8 +2,8 @@
 
 import { desc } from 'drizzle-orm'
 
-import db from '../../../db/drizzle'
-import { products } from '../../../db/schema'
+import db from '../../db/drizzle'
+import { products } from '../../db/schema'
 import { eq } from 'drizzle-orm/sql'
 
 export async function getLatestProducts() {
