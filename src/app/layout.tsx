@@ -3,6 +3,7 @@ import "./globals.css";
 import { Poppins as FontSans } from 'next/font/google'
 import { cn } from "@/lib/utils"
 import React from "react";
+import { Toaster } from "@/components/ui/toaster";
 
 const fontSans = FontSans({
   subsets: ["latin"],
@@ -22,7 +23,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>{children}</body>
+      <body className={cn('min-h-screen bg-background font-sans antialiased', fontSans.variable)}>
+        {children}
+        <Toaster />
+      </body>
     </html>
   );
 }
