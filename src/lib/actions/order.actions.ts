@@ -7,12 +7,13 @@ import { redirect } from 'next/navigation'
 import { insertOrderSchema } from '../validator'
 import db from '@/db/drizzle'
 import { carts, orderItems, orders, products } from '@/db/schema'
-import { eq, sql } from 'drizzle-orm'
+import { count, desc, eq, sql } from 'drizzle-orm'
 import { isRedirectError } from 'next/dist/client/components/redirect'
 import { formatError } from '../utils'
 import { paypal } from '../paypal'
 import { revalidatePath } from 'next/cache'
 import { PaymentResult } from '@/types'
+import { PAGE_SIZE } from '../constants'
 
 export async function getOrderById(orderId: string) {
     return await db.query.orders.findFirst({
@@ -24,108 +25,135 @@ export async function getOrderById(orderId: string) {
     })
 }
 
+export async function getMyOrders({
+    limit = PAGE_SIZE,
+    page,
+}: {
+    limit?: number
+    page: number
+}) {
+    const session = await auth()
+    if (!session) throw new Error('User is not authenticated')
+
+    const data = await db.query.orders.findMany({
+        where: eq(orders.userId, session.user.id!),
+        orderBy: [desc(products.createdAt)],
+        limit,
+        offset: (page - 1) * limit,
+    })
+    const dataCount = await db
+        .select({ count: count() })
+        .from(orders)
+        .where(eq(orders.userId, session.user.id!))
+
+    return {
+        data,
+        totalPages: Math.ceil(dataCount[0].count / limit),
+    }
+}
+
 // UPDATE
 export async function createPayPalOrder(orderId: string) {
     try {
-      const order = await db.query.orders.findFirst({
-        where: eq(orders.id, orderId),
-      })
-      if (order) {
-        const paypalOrder = await paypal.createOrder(Number(order.totalPrice))
-        await db
-          .update(orders)
-          .set({
-            paymentResult: {
-              id: paypalOrder.id,
-              email_address: '',
-              status: '',
-              pricePaid: '0',
-            },
-          })
-          .where(eq(orders.id, orderId))
-        return {
-          success: true,
-          message: 'PayPal order created successfully',
-          data: paypalOrder.id,
+        const order = await db.query.orders.findFirst({
+            where: eq(orders.id, orderId),
+        })
+        if (order) {
+            const paypalOrder = await paypal.createOrder(Number(order.totalPrice))
+            await db
+                .update(orders)
+                .set({
+                    paymentResult: {
+                        id: paypalOrder.id,
+                        email_address: '',
+                        status: '',
+                        pricePaid: '0',
+                    },
+                })
+                .where(eq(orders.id, orderId))
+            return {
+                success: true,
+                message: 'PayPal order created successfully',
+                data: paypalOrder.id,
+            }
+        } else {
+            throw new Error('Order not found')
         }
-      } else {
-        throw new Error('Order not found')
-      }
     } catch (err) {
-      return { success: false, message: formatError(err) }
+        return { success: false, message: formatError(err) }
     }
-  }
-  
-  export async function approvePayPalOrder(
+}
+
+export async function approvePayPalOrder(
     orderId: string,
     data: { orderID: string }
-  ) {
+) {
     try {
-      const order = await db.query.orders.findFirst({
-        where: eq(orders.id, orderId),
-      })
-      if (!order) throw new Error('Order not found')
-  
-      const captureData = await paypal.capturePayment(data.orderID)
-      if (
-        !captureData ||
-        captureData.id !== order.paymentResult?.id ||
-        captureData.status !== 'COMPLETED'
-      )
-        throw new Error('Error in paypal payment')
-      await updateOrderToPaid({
-        orderId,
-        paymentResult: {
-          id: captureData.id,
-          status: captureData.status,
-          email_address: captureData.payer.email_address,
-          pricePaid:
-            captureData.purchase_units[0]?.payments?.captures[0]?.amount?.value,
-        },
-      })
-      revalidatePath(`/order/${orderId}`)
-      return {
-        success: true,
-        message: 'Your order has been successfully paid by PayPal',
-      }
+        const order = await db.query.orders.findFirst({
+            where: eq(orders.id, orderId),
+        })
+        if (!order) throw new Error('Order not found')
+
+        const captureData = await paypal.capturePayment(data.orderID)
+        if (
+            !captureData ||
+            captureData.id !== order.paymentResult?.id ||
+            captureData.status !== 'COMPLETED'
+        )
+            throw new Error('Error in paypal payment')
+        await updateOrderToPaid({
+            orderId,
+            paymentResult: {
+                id: captureData.id,
+                status: captureData.status,
+                email_address: captureData.payer.email_address,
+                pricePaid:
+                    captureData.purchase_units[0]?.payments?.captures[0]?.amount?.value,
+            },
+        })
+        revalidatePath(`/order/${orderId}`)
+        return {
+            success: true,
+            message: 'Your order has been successfully paid by PayPal',
+        }
     } catch (err) {
-      return { success: false, message: formatError(err) }
+        return { success: false, message: formatError(err) }
     }
-  }
-  
-  export const updateOrderToPaid = async ({
+}
+
+export const updateOrderToPaid = async ({
     orderId,
     paymentResult,
-  }: {
+}: {
     orderId: string
     paymentResult?: PaymentResult
-  }) => {
+}) => {
     const order = await db.query.orders.findFirst({
-      columns: { isPaid: true },
-      where: eq(orders.id, orderId),
-      with: { orderItems: true },
+        columns: { isPaid: true },
+        where: eq(orders.id, orderId),
+        with: { orderItems: true },
     })
     if (!order) throw new Error('Order not found')
     if (order.isPaid) throw new Error('Order is already paid')
     await db.transaction(async (tx) => {
-      for (const item of order.orderItems) {
+        for (const item of order.orderItems) {
+            await tx
+                .update(products)
+                .set({
+                    stock: sql`${products.stock} - ${item.qty}`,
+                })
+                .where(eq(products.id, item.productId))
+        }
         await tx
-          .update(products)
-          .set({
-            stock: sql`${products.stock} - ${item.qty}`,
-          })
-          .where(eq(products.id, item.productId))
-      }
-      await tx
-        .update(orders)
-        .set({
-          isPaid: true,
-          paidAt: new Date(),
-          paymentResult,
-        })
-        .where(eq(orders.id, orderId))
+            .update(orders)
+            .set({
+                isPaid: true,
+                paidAt: new Date(),
+                paymentResult,
+            })
+            .where(eq(orders.id, orderId))
     })
-  }
+}
 
 
 // CREATE
