@@ -33,7 +33,7 @@ const ProductDetails = async ({
 }) => {
     const product = await getProductBySlug(slug)
     if (!product) notFound()
-    
+
     const cart = await getMyCart()
     return (
         <>
