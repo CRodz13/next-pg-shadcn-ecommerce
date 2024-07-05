@@ -85,7 +85,20 @@ export async function getOrderSummary() {
     }
 }
 
-
+// DELETE
+export async function deleteOrder(id: string) {
+    try {
+      await db.delete(orders).where(eq(orders.id, id))
+      revalidatePath('/admin/orders')
+      return {
+        success: true,
+        message: 'Order deleted successfully',
+      }
+    } catch (error) {
+      return { success: false, message: formatError(error) }
+    }
+  }
+  
 // UPDATE
 export async function createPayPalOrder(orderId: string) {
     try {
@@ -188,6 +201,27 @@ export const updateOrderToPaid = async ({
             .where(eq(orders.id, orderId))
     })
 }
+
+export async function getAllOrders({
+    limit = PAGE_SIZE,
+    page,
+  }: {
+    limit?: number
+    page: number
+  }) {
+    const data = await db.query.orders.findMany({
+      orderBy: [desc(products.createdAt)],
+      limit,
+      offset: (page - 1) * limit,
+      with: { user: { columns: { name: true } } },
+    })
+    const dataCount = await db.select({ count: count() }).from(orders)
+  
+    return {
+      data,
+      totalPages: Math.ceil(dataCount[0].count / limit),
+    }
+  }
 
 
 // CREATE
