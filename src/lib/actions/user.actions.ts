@@ -3,7 +3,7 @@
 import { isRedirectError } from 'next/dist/client/components/redirect'
 
 import { auth, signIn, signOut } from '@/auth'
-import { paymentMethodSchema, shippingAddressSchema, signInFormSchema, signUpFormSchema } from '../validator'
+import { paymentMethodSchema, shippingAddressSchema, signInFormSchema, signUpFormSchema, updateUserSchema, } from '../validator'
 import { formatError } from '../utils'
 import { hashSync } from 'bcrypt-ts-edge'
 import db from '@/db/drizzle'
@@ -79,18 +79,37 @@ export async function getUserById(userId: string) {
 // DELETE
 export async function deleteUser(id: string) {
     try {
-      await db.delete(users).where(eq(users.id, id))
-      revalidatePath('/admin/users')
-      return {
-        success: true,
-        message: 'User deleted successfully',
-      }
+        await db.delete(users).where(eq(users.id, id))
+        revalidatePath('/admin/users')
+        return {
+            success: true,
+            message: 'User deleted successfully',
+        }
     } catch (error) {
-      return { success: false, message: formatError(error) }
+        return { success: false, message: formatError(error) }
     }
-  }
-  
-  // UPDATE
+}
+
+// UPDATE
+export async function updateUser(user: z.infer<typeof updateUserSchema>) {
+    try {
+        await db
+            .update(users)
+            .set({
+                name: user.name,
+                role: user.role,
+            })
+            .where(eq(users.id, user.id))
+        revalidatePath('/admin/users')
+        return {
+            success: true,
+            message: 'User updated successfully',
+        }
+    } catch (error) {
+        return { success: false, message: formatError(error) }
+    }
+}
+
 export async function updateUserAddress(data: ShippingAddress) {
     try {
         const session = await auth()
