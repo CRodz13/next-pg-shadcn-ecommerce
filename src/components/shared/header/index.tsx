@@ -15,6 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { MenuIcon } from 'lucide-react'
 import { getAllCategories } from '@/lib/actions/product.actions'
+import Search from './search'
 
 const Header = async () => {
     const categories = await getAllCategories()
@@ -28,7 +29,7 @@ const Header = async () => {
                                 <MenuIcon />
                             </Button>
                         </DrawerTrigger>
-                        <DrawerContent className="h-full max-w-sm">
+                        <DrawerContent className="h-full max-w-sm" aria-describedby={undefined}>
                             <DrawerHeader>
                                 <DrawerTitle>Select a category</DrawerTitle>
                                 <div className="space-y-1">
@@ -60,7 +61,13 @@ const Header = async () => {
                         {APP_NAME}
                     </Link>
                 </div>
+                <div className="hidden md:block">
+                    <Search />
+                </div>
                 <Menu />
+            </div>
+            <div className="md:hidden block   px-5 pb-2">
+                <Search />
             </div>
         </header>
     )
