@@ -1,10 +1,13 @@
-import { carts, orderItems, orders, products } from '@/db/schema'
+import { carts, orderItems, orders, products, reviews } from '@/db/schema'
 import { cartItemSchema, paymentResultSchema, shippingAddressSchema } from '@/lib/validator'
 import { InferSelectModel } from 'drizzle-orm'
 import { z } from 'zod'
 
 // PRODUCTS
 export type Product = InferSelectModel<typeof products>
+export type Review = InferSelectModel<typeof reviews> & {
+    user?: { name: string }
+}
 
 // CART
 export type Cart = InferSelectModel<typeof carts>

@@ -2,7 +2,7 @@ import * as z from 'zod'
 import { createInsertSchema, createSelectSchema } from 'drizzle-zod'
 import { formatNumberWithDecimal } from './utils'
 import { PAYMENT_METHODS } from './constants'
-import { orderItems, orders, products } from '@/db/schema'
+import { orderItems, orders, products, reviews } from '@/db/schema'
 
 // USER
 export const signInFormSchema = z.object({
@@ -32,6 +32,14 @@ export const signUpFormSchema = z
         message: "Passwords don't match",
         path: ['confirmPassword'],
     })
+
+export const insertReviewSchema = createInsertSchema(reviews, {
+    rating: z.coerce
+        .number()
+        .int()
+        .min(1, 'Rating must be at least 1')
+        .max(5, 'Rating must be at most 5'),
+})
 
 // CART
 export const cartItemSchema = z.object({
