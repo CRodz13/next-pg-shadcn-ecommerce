@@ -4,6 +4,8 @@ import Link from 'next/link'
 import { Card, CardContent, CardHeader } from '@/components/ui/card'
 import { Product } from '@/types'
 import ProductPrice from './product-price'
+import Rating from './rating'
+import { Button } from '@/components/ui/button'
 
 const ProductCard = ({ product }: { product: Product }) => {
     return (
@@ -29,12 +31,22 @@ const ProductCard = ({ product }: { product: Product }) => {
                     </Link>
                 </div>
                 <div className="flex-between gap-4">
-                    <p>{product.rating} stars</p>
+                    <Rating value={Number(product.rating)} />
                     {product.stock > 0 ? (
                         <ProductPrice value={Number(product.price)} />
                     ) : (
                         <p className="text-destructive">Out of Stock</p>
                     )}
+                </div>
+                <div>
+                    <Link
+                        href={`/quickview/product/${[product.slug]}`}
+                        className="w-full"
+                    >
+                        <Button variant="outline" size="sm" className="flex gap-2 w-full">
+                            <span>Quick View</span>
+                        </Button>
+                    </Link>
                 </div>
             </CardContent>
         </Card>
