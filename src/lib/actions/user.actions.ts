@@ -180,6 +180,10 @@ export async function updateProfile(user: { name: string; email: string }) {
     }
 }
 
+export const SignInWithEmail = async (formData: any) => {
+    await signIn('email', formData)
+}
+
 export const SignOut = async () => {
     await signOut()
 }

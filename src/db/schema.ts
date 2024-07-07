@@ -85,7 +85,7 @@ export const products = pgTable(
     'product',
     {
         id: uuid('id').defaultRandom().primaryKey().notNull(),
-        name: text('name').notNull(),
+        name: text('name').notNull().default('NO_NAME'),
         slug: text('slug').notNull(),
         category: text('category').notNull(),
         images: text('images').array().notNull(),
