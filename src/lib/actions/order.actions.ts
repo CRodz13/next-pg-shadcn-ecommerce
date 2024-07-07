@@ -14,6 +14,7 @@ import { paypal } from '../paypal'
 import { revalidatePath } from 'next/cache'
 import { PaymentResult } from '@/types'
 import { PAGE_SIZE } from '../constants'
+import { sendPurchaseReceipt } from '@/email'
 
 export async function getOrderById(orderId: string) {
     return await db.query.orders.findFirst({
@@ -88,17 +89,17 @@ export async function getOrderSummary() {
 // DELETE
 export async function deleteOrder(id: string) {
     try {
-      await db.delete(orders).where(eq(orders.id, id))
-      revalidatePath('/admin/orders')
-      return {
-        success: true,
-        message: 'Order deleted successfully',
-      }
+        await db.delete(orders).where(eq(orders.id, id))
+        revalidatePath('/admin/orders')
+        return {
+            success: true,
+            message: 'Order deleted successfully',
+        }
     } catch (error) {
-      return { success: false, message: formatError(error) }
+        return { success: false, message: formatError(error) }
     }
-  }
-  
+}
+
 // UPDATE
 export async function createPayPalOrder(orderId: string) {
     try {
@@ -181,7 +182,7 @@ export const updateOrderToPaid = async ({
         with: { orderItems: true },
     })
     if (!order) throw new Error('Order not found')
-    if (order.isPaid) throw new Error('Order is already paid')
+    // if (order.isPaid) throw new Error('Order is already paid')
     await db.transaction(async (tx) => {
         for (const item of order.orderItems) {
             await tx
@@ -200,28 +201,36 @@ export const updateOrderToPaid = async ({
             })
             .where(eq(orders.id, orderId))
     })
+    const updatedOrder = await db.query.orders.findFirst({
+        where: eq(orders.id, orderId),
+        with: { orderItems: true, user: { columns: { name: true, email: true } } },
+    })
+    if (!updatedOrder) {
+        throw new Error('Order not found')
+    }
+    sendPurchaseReceipt({ order: updatedOrder })
 }
 
 export async function getAllOrders({
     limit = PAGE_SIZE,
     page,
-  }: {
+}: {
     limit?: number
     page: number
-  }) {
+}) {
     const data = await db.query.orders.findMany({
-      orderBy: [desc(products.createdAt)],
-      limit,
-      offset: (page - 1) * limit,
-      with: { user: { columns: { name: true } } },
+        orderBy: [desc(products.createdAt)],
+        limit,
+        offset: (page - 1) * limit,
+        with: { user: { columns: { name: true } } },
     })
     const dataCount = await db.select({ count: count() }).from(orders)
-  
+
     return {
-      data,
-      totalPages: Math.ceil(dataCount[0].count / limit),
+        data,
+        totalPages: Math.ceil(dataCount[0].count / limit),
     }
-  }
+}
 
 
 // CREATE
@@ -277,32 +286,32 @@ export const createOrder = async () => {
 
 export async function updateOrderToPaidByCOD(orderId: string) {
     try {
-      await updateOrderToPaid({ orderId })
-      revalidatePath(`/order/${orderId}`)
-      return { success: true, message: 'Order paid successfully' }
+        await updateOrderToPaid({ orderId })
+        revalidatePath(`/order/${orderId}`)
+        return { success: true, message: 'Order paid successfully' }
     } catch (err) {
-      return { success: false, message: formatError(err) }
+        return { success: false, message: formatError(err) }
     }
-  }
-  
-  export async function deliverOrder(orderId: string) {
+}
+
+export async function deliverOrder(orderId: string) {
     try {
-      const order = await db.query.orders.findFirst({
-        where: eq(orders.id, orderId),
-      })
-      if (!order) throw new Error('Order not found')
-      if (!order.isPaid) throw new Error('Order is not paid')
-  
-      await db
-        .update(orders)
-        .set({
-          isDelivered: true,
-          deliveredAt: new Date(),
+        const order = await db.query.orders.findFirst({
+            where: eq(orders.id, orderId),
         })
-        .where(eq(orders.id, orderId))
-      revalidatePath(`/order/${orderId}`)
-      return { success: true, message: 'Order delivered successfully' }
+        if (!order) throw new Error('Order not found')
+        if (!order.isPaid) throw new Error('Order is not paid')
+
+        await db
+            .update(orders)
+            .set({
+                isDelivered: true,
+                deliveredAt: new Date(),
+            })
+            .where(eq(orders.id, orderId))
+        revalidatePath(`/order/${orderId}`)
+        return { success: true, message: 'Order delivered successfully' }
     } catch (err) {
-      return { success: false, message: formatError(err) }
+        return { success: false, message: formatError(err) }
     }
-  }
+}
