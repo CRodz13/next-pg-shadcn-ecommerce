@@ -28,8 +28,9 @@ import {
 } from '@/lib/actions/order.actions'
 import { useTransition } from 'react'
 import { Button } from '@/components/ui/button'
+import StripePayment from './stripe-payment'
 
-export default function OrderDetailsForm({ order, paypalClientId, isAdmin, }: { order: Order, paypalClientId: string, isAdmin: boolean }) {
+export default function OrderDetailsForm({ order, paypalClientId, isAdmin, stripeClientSecret, }: { order: Order, paypalClientId: string, isAdmin: boolean, stripeClientSecret: string | null }) {
     const {
         shippingAddress,
         orderItems,
@@ -224,6 +225,14 @@ export default function OrderDetailsForm({ order, paypalClientId, isAdmin, }: { 
                                         />
                                     </PayPalScriptProvider>
                                 </div>
+                            )}
+
+                            {!isPaid && paymentMethod === 'Stripe' && stripeClientSecret && (
+                                <StripePayment
+                                    priceInCents={Number(order.totalPrice) * 100}
+                                    orderId={order.id}
+                                    clientSecret={stripeClientSecret}
+                                />
                             )}
 
                             {isAdmin && !isPaid && paymentMethod === 'CashOnDelivery' && (
