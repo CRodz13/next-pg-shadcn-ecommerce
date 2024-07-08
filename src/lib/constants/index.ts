@@ -7,6 +7,8 @@ export const SENDER_EMAIL = process.env.SENDER_EMAIL || 'onboarding@resend.dev'
 
 export const PAGE_SIZE = Number(process.env.PAGE_SIZE) || 3
 
+export const RESEND_API_KEY = process.env.RESEND_API_KEY
+
 export const PAYMENT_METHODS = process.env.PAYMENT_METHODS
     ? process.env.PAYMENT_METHODS.split(', ')
     : ['PayPal', 'Stripe', 'CashOnDelivery']
