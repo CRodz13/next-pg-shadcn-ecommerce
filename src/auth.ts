@@ -13,7 +13,7 @@ import { cookies } from 'next/headers'
 import { NextResponse } from 'next/server'
 import { APP_NAME, SENDER_EMAIL } from './lib/constants'
 
-export const config = {
+export const config: NextAuthConfig = {
     pages: {
         signIn: '/sign-in',
         error: '/sign-in',
